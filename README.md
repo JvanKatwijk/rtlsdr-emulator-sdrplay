@@ -56,9 +56,11 @@ Creating a DLL
 For creating a DLL the mingw32 environment is used. 
 
 Under Windows, assuming you have msys2 installed (with gcc compiler), 
+
 	gcc -O2 -fPIC -shared -I . -o rtlsdr.dll rtlsdr-bridge.c mir_sdr_api.dll.a
 
 Under Linux, assuming mingw32 is installed
+
 	i686-w64-mingw32- -O2 -fPIC -shared -I . -o rtlsdr.dll rtlsdr-bridge.c mir_sdr_api.dll.a
 
 The command will generate a dll, "rtlsdr.dll" that can be used instead of
