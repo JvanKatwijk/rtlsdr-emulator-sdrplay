@@ -61,8 +61,12 @@ Under Windows, assuming you have msys2 installed (with gcc compiler),
 
 Under Linux, assuming mingw32 is installed
 
-	i686-w64-mingw32- -O2 -fPIC -shared -I . -o rtlsdr.dll rtlsdr-bridge.c mir_sdr_api.dll.a
+	i686-w64-mingw32-gcc -O2 -fPIC -shared -I . -o rtlsdr.dll rtlsdr-bridge.c mir_sdr_api.dll.a
 
 The command will generate a dll, "rtlsdr.dll" that can be used instead of
 the original one. A suggestion is to copy the original rtlsdr.dll to rtlsdr,dll-rtldevice
+
+Note that for using the mingw32 compilers, one does need the ".dll.a" file, which for reasons of convenience is
+part of the distribution
+
 
