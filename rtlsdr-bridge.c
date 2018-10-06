@@ -8,7 +8,7 @@
  *    It allows the operation of rtlsdr based software with
  *    an SDRplay device emulating the rtlsdr device
  *
- *    rtlsdrBridge is available under GPL-V2. For commercial use contact the author.
+ *    rtlsdrBridge is available under GPL-V2 (not V3)
  */
 
 #include	<pthread.h>
@@ -130,37 +130,20 @@ int     RSP1A_Table [4] [11] = {
         { 9, 0, 6, 12, 20, 26, 32, 38, 43, 62, -1}
 };
 
-
-static
-int16_t getBand (int hwVersion, int32_t freq) {
-	(void)hwVersion;
-        if (freq < 60 * MHz (1))
-           return 0;
-        if (freq < 120 * MHz (1))
-           return 1;
-        if (freq < 250 * MHz (1))
-           return  2;
-        if (freq < 420 * MHz (1))
-           return 3;
-        if (freq < 1000 * MHz (1))
-           return 4;
-        if (freq < 2000 * MHz (1))
-           return 5;
-        return -1;
-}
-
-//
 //
 //	A little tricky, the rtlsdr device shows the gains available,
 //	here we depend on both the hwdevice and the frequency 
-//	for the list. A nasty problem that we currently circumvent
-//	by assuming the device is an RSP2, and the frequencies
-//	are limited
+//	for the list, so we have lots of functions to determine
+//	what the "gain" actually means.
+//	We dispatch, based on the hwVersion.
 struct {
 	int	Gain;
 } gainTable [] = {
 0, 10,	20, 25,	30, 35,	40, 45, 50, 55, 60, 65, 70, 75, 80, -1};
 
+//
+//	Note that the RSPX_tables have as first element in the row
+//	the number of valid elements
 static
 void	handleGain_rsp1 (int frequency, int gain, int *lnaState, int *GRdB) {
 int	gainreduction	= 102 - gain;
@@ -195,6 +178,7 @@ int	i;
 	      }
 	   }
 	}
+//	we should not be here
 }
 
 void	handleGain_rsp2 (int frequency, int gain, int *lnaState, int *GRdB) {
@@ -233,6 +217,7 @@ int	i;
 	      }
 	   }
 	}
+//	we should not be here
 }
 
 void	handleGain_rsp1a (int frequency, int gain, int *lnaState, int *GRdB) {
@@ -278,6 +263,7 @@ int	i;
 	      }
 	   }
 	}
+//	we should not be here
 }
 
 static
@@ -297,14 +283,15 @@ void	gainHandler (int hwVersion, int frequency, int gain,
 	      return;
 	}
 }
-
-	   
+//
+//	The user's callback type:
 typedef void (*rtlsdr_read_async_cb_t)(uint8_t *buf, uint32_t len, void *ctx);
 
 //	our version of the device descriptor
 struct rtlsdr_dev {
 	int	deviceIndex;
 	int	hwVersion;
+	uint8_t	ppm;
 #ifdef	__SHORT__
 	int	shiftFactor;
 #else
@@ -315,7 +302,6 @@ struct rtlsdr_dev {
 	int	lnaState;
 	uint8_t	gainMode;
 	bool	agcOn;
-	uint8_t	ppm;
 //
 //	In this implementation inputRate and outputRate may differ
 //	if the "client" asks for a frequency lower than 2M, we
@@ -348,7 +334,8 @@ int	getBandwidth (int input) {
 	return mir_sdr_BW_5_000;
 }
 //
-//	Here we should think on what to do with rates < 1Mhz
+//	Here we should think on what to do with rates < 1Mhz,
+//	after all a dabstick will work fine on 960K
 static
 int	getRate	(int rate) {
 	return rate >= MHz (2) ? rate : 
@@ -493,14 +480,14 @@ mir_sdr_ErrT err;
 	devDescriptor. GRdB		= 45;
         devDescriptor. lnaState		= 3;
 	devDescriptor. tunerGain	= 40;
-        devDescriptor. gainMode	= 0;
-        devDescriptor. agcOn	= false;
-        devDescriptor. inputRate= 2048000;
-        devDescriptor. outputRate= 2048000;
-        devDescriptor. frequency= MHz (220);
-        devDescriptor. ppm	= 0;
-        devDescriptor. deviceIndex= 0;
-	devDescriptor. bandWidth= mir_sdr_BW_1_536;
+	devDescriptor. gainMode		= 0;
+	devDescriptor. agcOn		= false;
+        devDescriptor. inputRate	= 2048000;
+        devDescriptor. outputRate	= 2048000;
+        devDescriptor. frequency	= MHz (220);
+        devDescriptor. ppm		= 0;
+        devDescriptor. deviceIndex	= 0;
+	devDescriptor. bandWidth	= mir_sdr_BW_1_536;
 	signalInit	();	// create the queue
 }
 
@@ -511,9 +498,13 @@ RTLSDR_API int rtlsdr_close (rtlsdr_dev_t *dev) {
 	if (running)
 	   rtlsdr_cancel_async (dev);
 
+#ifdef __DEBUG__
 	fprintf (stderr, "going to release the device\n");
+#endif
 	mir_sdr_ReleaseDeviceIdx ();
+#ifdef	__DEBUG
 	fprintf (stderr, "close completed\n");
+#endif
 }
 
 RTLSDR_API int rtlsdr_set_center_freq (rtlsdr_dev_t *dev,
@@ -534,6 +525,7 @@ RTLSDR_API int rtlsdr_set_freq_correction (rtlsdr_dev_t *dev,
 	   return -1;
 
 	dev -> ppm	= ppm;
+
 	if (!running)		// will be handled later on
 	   return 0;
 	mir_sdr_SetPpm    ((float)ppm);
@@ -573,17 +565,20 @@ int	i;
 
 	for (i = 0; gainTable [i]. Gain != -1; i ++) {
 	   if ((gain >= 10 * gainTable [i]. Gain) &&
-	       ((gainTable [i + 1]. Gain == 1) ||
+	       ((gainTable [i + 1]. Gain ==  -1) ||
 	                (gain < 10 * gainTable [i + 1]. Gain))) {
 	      gainHandler (dev -> hwVersion,
 	                   dev -> frequency,
 	                   gain,
 	                   &dev -> lnaState,
 		           &dev -> GRdB);
+
 	      if (dev -> GRdB < 20)
 	         dev -> GRdB = 20;
+#ifdef	__DEBUG__
 	      fprintf (stderr, "for gain %d, we set state %d GRdB %d\n",
 	                                 gain, dev -> lnaState, dev -> GRdB);
+#endif
 	      break;
 	   }
 	}
@@ -591,7 +586,6 @@ int	i;
 	if ((dev -> agcOn) || !running)
 	   return 0;
 
-	fprintf (stderr, "echt zetten nu %d %d\n", dev -> lnaState, dev -> GRdB);
 	err     =  mir_sdr_RSP_SetGr (dev -> GRdB,  dev -> lnaState, 1, 0);
 	if (err != mir_sdr_Success)
 	   fprintf (stderr, "Error at set_ifgain %s (%d %d)\n",
@@ -736,8 +730,7 @@ static	int	decimator	= 0;
 	         old_xq	= xq [i];
 	         continue;
 	      }
-	      else
-	         decimator ++;
+	      decimator ++;
 	      xi [i] = (xi [i] + old_xi) / 2;
 	      xq [i] = (xq [i] + old_xq) / 2;
 	   }
@@ -763,6 +756,9 @@ static
 void	myGainChangeCallback (uint32_t	GRdB,
 	                      uint32_t	lnaGRdB,
 	                      void	*cbContext) {
+	(void)GRdB;
+	(void)lnaGRdB;
+	(void)cbContext;
 }
 
 //
@@ -900,7 +896,7 @@ int     localGRed;
 	         break;
 
 	      case SET_BW: 
-	         { int new	= getBandwidth (value);
+	         { int new		= getBandwidth (value);
 	           int localGRed	= dev -> GRdB;
 	           int gRdBSystem;
 	           int	samplesPerPacket;
