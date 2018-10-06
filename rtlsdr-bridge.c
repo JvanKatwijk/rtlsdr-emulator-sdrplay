@@ -8,7 +8,7 @@
  *    It allows the operation of rtlsdr based software with
  *    an SDRplay device emulating the rtlsdr device
  *
- *    rtlsdrBridge is NOT free software. For use contact the author.
+ *    rtlsdrBridge is available under GPL-V2. For commercial use contact the author.
  */
 
 #include	<pthread.h>
@@ -123,11 +123,11 @@ int     RSP2_Table [3] [10] = {
 };
 
 static
-int     RSP1A_Table [6] [11] = {
+int     RSP1A_Table [4] [11] = {
         {7,  0, 6, 12, 18, 37, 42, 61, -1, -1, -1},
         {10, 0, 6, 12, 18, 20, 26, 32, 38, 57, 62},
         {10, 0, 7, 13, 19, 20, 27, 33, 39, 45, 64},
-        {10, 0, 6, 12, 20, 26, 32, 38, 43, 62, -1}
+        { 9, 0, 6, 12, 20, 26, 32, 38, 43, 62, -1}
 };
 
 
