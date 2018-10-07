@@ -79,4 +79,19 @@ the original one. A suggestion is to copy the original rtlsdr.dll to rtlsdr,dll-
 Note that for using the mingw32 compilers, one does need the ".dll.a" file, which for reasons of convenience is
 part of the distribution
 
+------------------------------------------------------------------------------------------------------------------------
+
+Copyrights
+
+-------------------------------------------------------------------------------------------------------------------------
+
+This software:	
+  * Copyright (C) 2018 Jan van Katwijk, Lazy Chair Computing
+
+SDRplay:
+  * Copyright (C) SDRplay inc.
+
+rtl-sdr:
+ * Copyright (C) 2012-2013 by Steve Markgraf <steve@steve-m.de>
+ * Copyright (C) 2012 by Dimitri Stolnikov <horiz0n@gmx.net>
 
