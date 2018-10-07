@@ -24,11 +24,11 @@ Installing this library creates the possibility of running - unmodified -
 programs that believe they are bound to "the" rtlsdr dynamic library,
 but actually run with the SDRplay device.
 
------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 Use is simple
 
------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 The usage is simple: just replace the rtlsdr.dll (in case of windows), or the librtlsdr.so
 (and librtlsdr.so,x) (for linux and run "sudo ldconfig" ) with the newly generated one and

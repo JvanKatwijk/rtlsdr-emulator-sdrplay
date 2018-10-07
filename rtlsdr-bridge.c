@@ -28,7 +28,7 @@
 #include	"mirsdrapi-rsp.h"
 
 //	uncomment __DEBUG__ for lots of output
-#define	__DEBUG__	0
+//#define	__DEBUG__	0
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
 #define	__SHORT__	0
 
@@ -189,9 +189,11 @@ int	i;
 	if (frequency < MHz (420)) {
 	   for (i = 1; i <= RSP2_Table [0][0]; i ++) {
 	      if (RSP2_Table [0][i] >= gainreduction / 2) {
+#ifdef	__DEBUG__
 	         fprintf (stderr,
 	                  "lna (%d) reduction found %d (gainred %d)\n",
 	                   i - 1, RSP2_Table [0][i], gainreduction);
+#endif
 	         *lnaState	= i - 1;
 	         *GRdB		= gainreduction - RSP2_Table [0] [i];
 	         return;
