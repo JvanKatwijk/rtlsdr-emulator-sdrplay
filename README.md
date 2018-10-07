@@ -57,6 +57,12 @@ Assuming the library for the SDRplay RSP device is installed, execute
 and replace the librtlsdr.so* files in - most likely - /usr/local/lib by
 this new librtlsdr.so
 
+If you want to see some of the parameters used for the SDRplay, add
+
+	-D__DEBUG__
+
+to the command line.
+
 ---------------------------------------------------------------------------
 
 Creating a DLL
