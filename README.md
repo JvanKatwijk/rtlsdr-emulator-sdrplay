@@ -4,25 +4,20 @@ rtlsdr emulator: Running rtlsdr-based software with an SDRplay device
 --------------------------------------------------------------------------
 
 There is no doubt that the (various) SDRplay RSP devices are technically
-superior to the common RTLSDR "dab" sticks. That being true, there is
+superior to the common RTLSDR "dab" sticks. That being said, there is
 also no doubt that there is much more software written - and made available -
 for the RTLSDR sticks than for the SDRplay devices.
 
 After adding SDRplay support to some rtlsdr-based software packages, i.e.
 dump1090 and acarsdec, it was felt that rewriting each piece of 
-rtlsdr based software for SDRplay support was not an ideal approach.
+rtlsdr based software for SDRplay support was hardly an ideal approach.
 
 ---------------------------------------------------------------------------
 
-The approach taken here is to bridge the gap between the API of the SDRplay
-devices - that API is well documented - and the osmocom API of the RTLSDR
-devices.
-
-A library is created that implements a - reasonable - part of the 
-osmocom defined API in terms of the SDRplay RSP API. 
-Installing this library creates the possibility of running - unmodified -
-programs that believe they are bound to "the" rtlsdr dynamic library,
-but actually run with the SDRplay device.
+Therefore an other approach was taken: create a library that shows itself as
+an RTLSDR library, and internally translates calls to appropriate calls
+to the SDRplay libary,  bridging the gap between the API of the SDRplay
+devices. 
 
 -------------------------------------------------------------------------------
 
@@ -40,6 +35,16 @@ There are quite some differences between the two API's, so there is not
 a 100% match. However, since in most cases only a subset of the rtlsdr
 API is used, it turns out that programs like acarsdec, dump1090, rtl_433,
 aiswatcher, dump978 run with the emulator.
+
+--------------------------------------------------------------------------------
+
+Issues
+
+---------------------------------------------------------------------------------
+
+The major "issue" - still being worked on - is the translation of the gain setting
+of the DAB sticks. It turns out - playing around with e.g. acarsdec that the result
+is pretty depending on the selection of the right lnaState and Gain Reduction for the SDRplay
 
 
 -----------------------------------------------------------------------------
