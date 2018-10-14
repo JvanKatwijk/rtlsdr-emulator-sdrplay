@@ -1,4 +1,3 @@
-#
 /*
  *    Copyright (C) 2018
  *    Jan van Katwijk (J.vanKatwijk@gmail.com)
@@ -8,13 +7,12 @@
  *    It allows the operation of rtlsdr based software with
  *    an SDRplay device emulating the rtlsdr device
  *
- *    rtlsdrBridge is available under GPL-V2 (not V3)
+ *    rtlsdrBridge is available under GPL-V2 
  */
-
-#include	<pthread.h>
-#include	<semaphore.h>
-#include	<stdlib.h>
 #include	<stdio.h>
+#include	<semaphore.h>
+#include	<pthread.h>
+#include	<stdlib.h>
 #include	<stdint.h>
 #include	<stdbool.h>
 #ifdef	__MINGW32__
@@ -28,7 +26,7 @@
 #include	"mirsdrapi-rsp.h"
 
 //	uncomment __DEBUG__ for lots of output
-//#define	__DEBUG__	0
+#define	__DEBUG__	0
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
 #define	__SHORT__	0
 
@@ -188,14 +186,18 @@ int	i;
 	*GRdB		= 30;
 	if (frequency < MHz (420)) {
 	   for (i = 1; i <= RSP2_Table [0][0]; i ++) {
-	      if (RSP2_Table [0][i] >= gainreduction / 2) {
+	      if (RSP2_Table [0][i] >= (gainreduction - 44)) {
 #ifdef	__DEBUG__
 	         fprintf (stderr,
 	                  "lna (%d) reduction found %d (gainred %d)\n",
-	                   i - 1, RSP2_Table [0][i], gainreduction);
+	                   i, RSP2_Table [0][i], gainreduction);
 #endif
-	         *lnaState	= i - 1;
+	         *lnaState	= i;
 	         *GRdB		= gainreduction - RSP2_Table [0] [i];
+		 if (*GRdB < 20)
+		      *GRdB = 20;
+		 if (*GRdB > 59)
+			 *GRdB = 59;
 	         return;
 	      }
 	   }
@@ -212,7 +214,7 @@ int	i;
 	}
 	else {
 	   for (i = 0; i <= RSP2_Table [2][0]; i ++) {
-	      if (RSP1_Table [2][i] >= gainreduction / 2) {
+	      if (RSP2_Table [2][i] >= 0.6 * (gainreduction - 20)) {
 	         *lnaState	= i - 1;
 	         *GRdB		= gainreduction - RSP1_Table [2] [i];
 	         return;
@@ -459,6 +461,7 @@ mir_sdr_ErrT err;
 	      devDescriptor. downScale		= 2048.0;
 #endif
 	      break;
+
 	   case 2:
 #ifdef	__SHORT__
 	      devDescriptor. shiftFactor	= 4;
@@ -466,6 +469,7 @@ mir_sdr_ErrT err;
 	      devDescriptor. downScale		= 2048.0;
 #endif
 	      break;
+
 	   default:		// RSP1A and RSP_DUO
 #ifdef	__SHORT__
 	      devDescriptor. shiftFactor	= 6;
@@ -676,6 +680,8 @@ mir_sdr_ErrT    err;
 /* streaming functions */
 
 RTLSDR_API int rtlsdr_reset_buffer (rtlsdr_dev_t *dev) {
+	if (dev != NULL)
+	   dev -> fbP	= 0;
 	return 0;
 }
 
@@ -737,8 +743,8 @@ static	int	decimator	= 0;
 	      xq [i] = (xq [i] + old_xq) / 2;
 	   }
 #ifdef	__SHORT__
-	   finalBuffer [ctx -> fbP++] = (int8_t)(xi [i] >> shiftFactor) + 128;
-	   finalBuffer [ctx -> fbP++] = (int8_t)(xq [i] >> shiftFactor) + 128;
+	   finalBuffer [ctx -> fbP++] = (int8_t)((xi [i] >> shiftFactor) & 0xFF) + 128;
+	   finalBuffer [ctx -> fbP++] = (int8_t)((xq [i] >> shiftFactor) & 0xFF) + 128;
 #else
 	   finalBuffer [ctx -> fbP++] =
 	                      (int8_t)((float)(xi [i]) * 128.0 / downScale) + 128;
@@ -783,6 +789,12 @@ int     localGRed;
         if (running)
            return -1;
 
+//
+//	just to prevent errors from streamInit
+	if (dev -> inputRate < 2000000)
+	   return -1;
+	if ((dev -> GRdB < 20) || (dev -> GRdB > 59))
+	   return -1;
 	dev	-> callback	= cb;
 	dev	-> ctx		= ctx;
 	dev	-> buf_num	= buf_num;
@@ -818,6 +830,16 @@ int     localGRed;
 #ifdef	__DEBUG__
 	fprintf (stderr, "rtlsdr_read_async is started\n");
 #endif
+	if (dev -> agcOn) {
+	   err = mir_sdr_AgcControl (mir_sdr_AGC_100HZ,
+	                             -dev -> GRdB,
+                                      0, 0, 0, 0, dev -> lnaState);
+	   if (err != mir_sdr_Success) 
+	      fprintf (stderr,
+	               "Error %s on mir_sdr_AgcControl\n",
+	                                         sdrplay_errorCodes (err));
+	           
+	}
         err             = mir_sdr_SetDcMode (4, 1);
         err             = mir_sdr_SetDcTrackTime (63);
 	err		= mir_sdr_SetPpm    ((float)dev -> ppm);
