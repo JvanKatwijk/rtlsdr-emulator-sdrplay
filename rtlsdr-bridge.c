@@ -26,7 +26,7 @@
 #include	"mirsdrapi-rsp.h"
 
 //	uncomment __DEBUG__ for lots of output
-#define	__DEBUG__	0
+#define	__DEBUG__	1
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
 #define	__SHORT__	0
 
@@ -179,23 +179,47 @@ int	i;
 //	we should not be here
 }
 
+	struct {
+	   int gain;
+	   int gain_reduction;
+	   int lnaState;
+	   int lnaGainreduction;
+	   int GRdB;
+	} rsp2_420 [] = {
+	{ 0, 100,  9, 64, 36},
+	{10,  90,  8, 45, 45},
+	{20,  80,  8, 45, 35},
+	{25,  75,  7, 39, 36},
+	{30,  70,  7, 39, 31},
+	{35,  65,  6, 34, 31},
+	{40,  60,  5, 24, 36},
+	{45,  55,  5, 24, 31},
+	{50,  50,  4, 21, 29},
+	{55,  45,  4, 21, 24},
+	{60,  40,  4, 21, 20},
+	{65,  35,  3, 15, 20},
+	{70,  30,  2, 10, 20},
+	{75,  25,  1, 10, 25},
+	{80,  20,  1,  0, 20},
+	{-1,  -1, -1, -1}};
+
 void	handleGain_rsp2 (int frequency, int gain, int *lnaState, int *GRdB) {
 int	gainreduction	= 102 - gain / 10;
 int	i;
 	*lnaState	= 3;
 	*GRdB		= 30;
 	if (frequency < MHz (420)) {
-	   for (i = 1; i <= RSP2_Table [0][0]; i ++) {
-
-        {9, 0, 10, 15, 21, 24, 34, 39, 45, 64},
-	      if (RSP2_Table [0][i] >= 0.25 * gainreduction ) {
+	   for (i = 1; rsp2_420 [i]. gain != -1; i ++) {
+	      if (gain / 10 <= rsp2_420 [i]. gain) {
 #ifdef	__DEBUG__
 	         fprintf (stderr,
 	                  "lna (%d) reduction found %d (gainred %d)\n",
-	                   i + 1, RSP2_Table [0][i], gainreduction);
+	                   rsp2_420 [i]. lnaState,
+	                   rsp2_420 [i]. GRdB,
+	                   rsp2_420 [i]. gain_reduction);
 #endif
-	         *lnaState	= i + 1;
-	         *GRdB		= gainreduction - RSP2_Table [0] [i + 1];
+	         *lnaState	= rsp2_420 [i]. lnaState;
+	         *GRdB		= rsp2_420 [i]. GRdB;
 		 if (*GRdB < 20)
 		      *GRdB = 20;
 		 if (*GRdB > 59)
@@ -510,7 +534,7 @@ RTLSDR_API int rtlsdr_close (rtlsdr_dev_t *dev) {
 	fprintf (stderr, "going to release the device\n");
 #endif
 	mir_sdr_ReleaseDeviceIdx ();
-#ifdef	__DEBUG
+#ifdef	__DEBUG__
 	fprintf (stderr, "close completed\n");
 #endif
 }
