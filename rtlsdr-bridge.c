@@ -186,14 +186,16 @@ int	i;
 	*GRdB		= 30;
 	if (frequency < MHz (420)) {
 	   for (i = 1; i <= RSP2_Table [0][0]; i ++) {
-	      if (RSP2_Table [0][i] >= (gainreduction - 44)) {
+
+        {9, 0, 10, 15, 21, 24, 34, 39, 45, 64},
+	      if (RSP2_Table [0][i] >= 0.25 * gainreduction ) {
 #ifdef	__DEBUG__
 	         fprintf (stderr,
 	                  "lna (%d) reduction found %d (gainred %d)\n",
-	                   i, RSP2_Table [0][i], gainreduction);
+	                   i + 1, RSP2_Table [0][i], gainreduction);
 #endif
-	         *lnaState	= i;
-	         *GRdB		= gainreduction - RSP2_Table [0] [i];
+	         *lnaState	= i + 1;
+	         *GRdB		= gainreduction - RSP2_Table [0] [i + 1];
 		 if (*GRdB < 20)
 		      *GRdB = 20;
 		 if (*GRdB > 59)
