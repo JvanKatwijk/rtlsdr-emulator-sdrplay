@@ -137,7 +137,7 @@ int     RSP1A_Table [4] [11] = {
 struct {
 	int	Gain;
 } gainTable [] = {
-0, 10,	20, 25,	30, 35,	40, 45, 50, 55, 60, 65, 70, 75, 80, -1};
+0, 10,	20, 25,	30, 35,	40, 45, 50, 55, 60, -1};
 
 //
 //	Note that the RSPX_tables have as first element in the row
@@ -178,7 +178,11 @@ int	i;
 	}
 //	we should not be here
 }
-
+//
+//	finding the right combination <lnaState, GRdB> to
+//	implement the different gains of the emulated
+//	rtlsdr device remains troublesome. This table
+//	seems to do the work
 	struct {
 	   int gain;
 	   int gain_reduction;
@@ -191,16 +195,11 @@ int	i;
 	{20,  80,  8, 45, 35},
 	{25,  75,  7, 39, 36},
 	{30,  70,  7, 39, 31},
-	{35,  65,  6, 34, 31},
-	{40,  60,  5, 24, 36},
-	{45,  55,  5, 24, 31},
+	{35,  65,  5, 24, 41},
+	{40,  60,  4, 21, 39},
+	{45,  55,  4, 21, 34},
 	{50,  50,  4, 21, 29},
-	{55,  45,  4, 21, 24},
-	{60,  40,  4, 21, 20},
-	{65,  35,  3, 15, 20},
-	{70,  30,  2, 10, 20},
-	{75,  25,  1, 10, 25},
-	{80,  20,  1,  0, 20},
+	{55,  45,  3, 15, 29},
 	{-1,  -1, -1, -1}};
 
 void	handleGain_rsp2 (int frequency, int gain, int *lnaState, int *GRdB) {
@@ -622,7 +621,7 @@ int	i;
 	if (err != mir_sdr_Success)
 	   fprintf (stderr, "Error at set_ifgain %s (%d %d)\n",
                                         sdrplay_errorCodes (err),
-	                                gain, dev -> lnaState);
+	                                dev -> GRdB, dev -> lnaState);
 	return 0;
 }
 
@@ -669,7 +668,7 @@ RTLSDR_API int rtlsdr_set_sample_rate (rtlsdr_dev_t *dev,
 }
 
 
-RTLSDR_API int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on) {
+RTLSDR_API int rtlsdr_set_agc_mode (rtlsdr_dev_t *dev, int on) {
 mir_sdr_ErrT    err;
 
 	if (dev == NULL)
@@ -815,7 +814,8 @@ int     localGRed;
         if (running)
            return -1;
 
-//
+	if (signalQueue != NULL)
+	   fprintf (stderr, "grote pech\n");
 //	just to prevent errors from streamInit
 	if (dev -> inputRate < 2000000)
 	   return -1;
@@ -833,7 +833,8 @@ int     localGRed;
 	                  (double)(dev -> inputRate) / 1000000.0,
 	                  (double)(dev -> frequency) / 1000000.0,
 	                  dev -> bandWidth,
-	                  dev -> lnaState
+	                  dev -> lnaState,
+	                  dev -> GRdB
 	        );
 #endif
         err	= mir_sdr_StreamInit (&localGRed,
@@ -851,6 +852,7 @@ int     localGRed;
         if (err != mir_sdr_Success) {
            fprintf (stderr,
 	            "Error %s on streamInit\n", sdrplay_errorCodes (err));
+	   running = false;
            return -1;
         }
 #ifdef	__DEBUG__
@@ -866,10 +868,10 @@ int     localGRed;
 	                                         sdrplay_errorCodes (err));
 	           
 	}
+	running		= true;
         err             = mir_sdr_SetDcMode (4, 1);
         err             = mir_sdr_SetDcTrackTime (63);
 	err		= mir_sdr_SetPpm    ((float)dev -> ppm);
-        running	= true;
 //
 //	we make this into a simple event loop with semaphores
 	while (running) {
@@ -878,22 +880,24 @@ int     localGRed;
 	   int	value;
 	   mir_sdr_ErrT err;
 
+	   fprintf (stderr, "waiting for a signal\n");
 	   getSignalfromQueue (&signal, (void **)(&device) , &value);
+	   fprintf (stderr, "we got a signal %d\n", signal);
 
 	   switch (signal) {
 	      case CANCEL_ASYNC:
-#ifdef	__DEBUG__
+//#ifdef	__DEBUG__
 	         fprintf (stderr, "cancel request\n");
-#endif
+//#endif
 	         running = false;
-	         err = mir_sdr_StreamUninit ();
 	         signalReset ();
+	         err = mir_sdr_StreamUninit ();
 	         if (err != mir_sdr_Success)
                     fprintf (stderr, "Error at StreamUnInit %s\n",
                                         sdrplay_errorCodes (err));
-#ifdef	__DEBUG
-	         fprintf (stderr, "StreamUnInit has called\n");
-#endif
+//#ifdef	__DEBUG
+	         fprintf (stderr, "StreamUnInit was called\n");
+//#endif
 	         free (finalBuffer);
 	         goto L_end;
 
@@ -914,7 +918,7 @@ int     localGRed;
                                    device -> bandWidth,
                                    mir_sdr_IF_Zero,
                                    mir_sdr_LO_Undefined,      // LOMode
-                                   dev-> lnaState, 
+                                   dev -> lnaState, 
                                    &gRdBSystem,
 	                           mir_sdr_USE_RSP_SET_GR,
                                    &samplesPerPacket,
@@ -1051,11 +1055,13 @@ L_end:
 
 //
 RTLSDR_API int rtlsdr_cancel_async (rtlsdr_dev_t *dev) {
+	fprintf (stderr, "cancel is called, running = %d\n", running);
 	if (dev == NULL)
 	   return -1;
 	if (!running)
 	   return 0;
 	putSignalonQueue (CANCEL_ASYNC, dev, 0);
+	fprintf (stderr, "we put a signal on the queue\n");
 	while (running)
 #ifdef	__MINGW32__
 	   Sleep (1);
