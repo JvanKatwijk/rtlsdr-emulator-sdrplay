@@ -47,6 +47,9 @@ of the DAB sticks. It turns out - playing around with e.g. acarsdec that the res
 is pretty depending on the selection of the right lnaState and Gain Reduction for the SDRplay
 
 
+The current "approacH' is - for the RSPII - for lower frequencies (< 420M)
+table driven, it works reasonably wel with the acarsdec software.
+
 -----------------------------------------------------------------------------
 
 Creating the library under Linux
