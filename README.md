@@ -60,7 +60,7 @@ Creating the library under Linux
 For simplicity reasons, the include files for both libraries are included.
 Assuming the library for the SDRplay RSP device is installed, execute
 
-	gcc -O2 -fPIC -shared  -I . -o librtlsdr.o rtlsdr-bridge.c -lmiradrapi-rsp
+	gcc -O2 -fPIC -shared  -I . -o librtlsdr.o rtlsdr-bridge.c -lmirsdrapi-rsp
 
 and replace the librtlsdr.so* files in - most likely - /usr/local/lib by
 this new librtlsdr.so
