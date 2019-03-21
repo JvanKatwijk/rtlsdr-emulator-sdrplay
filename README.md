@@ -24,15 +24,44 @@ Installing this library creates the possibility of running - unmodified -
 programs that believe they are bound to "the" rtlsdr dynamic library,
 but actually run with the SDRplay device.
 
--------------------------------------------------------------------------------
-
-Use is simple
 
 -------------------------------------------------------------------------------
+Use under Windows
+------------------------------------------------------------------------------
 
-The usage is simple: just replace the rtlsdr.dll (in case of windows), or the librtlsdr.so
-(and librtlsdr.so,x) (for linux and run "sudo ldconfig" ) with the newly generated one and
-the SDRplay will behave (to a large extend) as an RTLDSDR device.
+For use under Windows, a precompiled version of the dll
+is available.
+The usage is simple: just replace the rtlsdr.dll by the one in the 
+repository. Note however, that more dll's are required.
+The respository contains a zipped folder with - as example - the
+rtl433.exe program (Copyright Benjamin Larsson (merbanan on github)),
+together with the fake librtlsdr.dll and other
+required libraries.
+
+----------------------------------------------------------------------------
+Use under Linux
+----------------------------------------------------------------------------
+
+The usage is - obviously - quite similar to the usage under Windows.
+Just create a version of the "fake" library, as indicated here
+under the assumption that the "sdrapi" library is installed.
+
+(For simplicity reasons, the include files for both libraries are included)
+Execute
+
+	gcc -O2 -fPIC -shared  -I . -o librtlsdr.o rtlsdr-bridge.c -lmirsdrapi-rsp
+
+and replace the librtlsdr.so* files in - most likely - /usr/local/lib by
+this new librtlsdr.so.
+
+If you want to see some of the parameters used for the SDRplay, add
+
+	-D__DEBUG__
+
+to the command line.
+
+The SDRplay will then be able to behave (to a large extend)
+as an RTLDSDR device if an RTLSDR device is asked for.
 
 ----------------------------------------------------------------------------
 
@@ -42,31 +71,9 @@ API is used, it turns out that programs like acarsdec, dump1090, rtl_433,
 aiswatcher, dump978 run with the emulator.
 
 
------------------------------------------------------------------------------
-
-Creating the library under Linux
-
------------------------------------------------------------------------------
-
-
-For simplicity reasons, the include files for both libraries are included.
-Assuming the library for the SDRplay RSP device is installed, execute
-
-	gcc -O2 -fPIC -shared  -I . -o librtlsdr.o rtlsdr-bridge.c -lmiradrapi-rsp
-
-and replace the librtlsdr.so* files in - most likely - /usr/local/lib by
-this new librtlsdr.so
-
-If you want to see some of the parameters used for the SDRplay, add
-
-	-D__DEBUG__
-
-to the command line.
 
 ---------------------------------------------------------------------------
-
-Creating a DLL
-
+Creating a DLL for use under Windows
 ---------------------------------------------------------------------------
 
 For creating a DLL the mingw32 environment is used. 
@@ -85,11 +92,9 @@ the original one. A suggestion is to copy the original rtlsdr.dll to rtlsdr,dll-
 Note that for using the mingw32 compilers, one does need the ".dll.a" file, which for reasons of convenience is
 part of the distribution
 
-------------------------------------------------------------------------------------------------------------------------
-
+------------------------------------------------------------------------------
 Copyrights
-
--------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 This software:	
   * Copyright (C) 2018 Jan van Katwijk, Lazy Chair Computing
@@ -100,4 +105,7 @@ SDRplay:
 rtl-sdr:
  * Copyright (C) 2012-2013 by Steve Markgraf <steve@steve-m.de>
  * Copyright (C) 2012 by Dimitri Stolnikov <horiz0n@gmx.net>
+
+rtl433.exe program:
+ * Copyright Benjamin Larsson (merbanan on github)
 
