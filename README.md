@@ -63,6 +63,8 @@ to the command line.
 The SDRplay will then be able to behave (to a large extend)
 as an RTLDSDR device if an RTLSDR device is asked for.
 
+The "librtlsdr.so" file in the repository was made under Fedora 
+
 ------------------------------------------------------------------------------
 Issues
 -------------------------------------------------------------------------------
