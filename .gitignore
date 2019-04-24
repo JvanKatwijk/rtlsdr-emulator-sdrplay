@@ -1,6 +1,4 @@
 mir_sdr_api.def
 mir_sdr_api.dll.a
-librtlsdr.so
-rtlsdr.dll
 
 
