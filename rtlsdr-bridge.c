@@ -26,7 +26,7 @@
 #include	"mirsdrapi-rsp.h"
 
 //	uncomment __DEBUG__ for lots of output
-#define	__DEBUG__	1
+//#define	__DEBUG__	1
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
 #define	__SHORT__	0
 
@@ -106,6 +106,10 @@ char    *sdrplay_errorCodes (mir_sdr_ErrT err);
 
 //
 //      lna gain reduction tables, per band.
+//	bands are
+//	  0 .. 420
+//	420 .. 1000
+//	1000 .. 2000
 //      The first number in each row tells the number of valid elements
 static
 int     RSP1_Table [3] [5] = {{4, 0, 24, 19, 43},
@@ -127,7 +131,6 @@ int     RSP1A_Table [4] [11] = {
         {10, 0, 7, 13, 19, 20, 27, 33, 39, 45, 64},
         { 9, 0, 6, 12, 20, 26, 32, 38, 43, 62, -1}
 };
-
 //
 //	A little tricky, the rtlsdr device shows the gains available,
 //	here we depend on both the hwdevice and the frequency 
@@ -428,7 +431,15 @@ RTLSDR_API const char* rtlsdr_get_device_name (uint32_t devIndex) {
 	   return devDesc [devIndex]. DevNm;
 	return " ";
 }
-
+//
+//	Not sure how to handle this, need some thinking
+RTLSDR_API int rtlsdr_get_usb_strings (rtlsdr_dev_t *dev,
+	                               char *manufacturer,
+                                       char *product,
+                                       char *serial) {
+	rtlsdr_get_device_usb_strings (0, manufacturer, product, serial);
+}
+	                    
 RTLSDR_API int rtlsdr_get_device_usb_strings (uint32_t devIndex,
 					      char *manufacturer,
 					      char *product,
