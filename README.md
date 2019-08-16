@@ -45,7 +45,9 @@ the precise setting for the lna state and the Gainreduction
 
 The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
-the gain reduction.
+the gain reduction. On the right one sees the original widget for the
+rtlsdr software, note that gain setting in this latter widget has no effect,
+gain setting is controlled by the SDRplay gain setting widget.
 
 ------------------------------------------------------------------------------
 Use under Linux
@@ -62,7 +64,8 @@ Building a library file
 ------------------------------------------------------------------------------
 
 For use under Windows, a precompiled version of the dll
-is available.
+is available. Best is to look at the example program, that contains
+all dll's necessary to run the emulated dll driver.
 
 The  repository contains two makefiles, one for Linux and one
 for (cross) compilation for Windows.
