@@ -31,7 +31,7 @@ commands to the SDRplay api.
 Use under Windows (or how to run sdr# with the SDRplay)
 -----------------------------------------------------------------------------
 
-Mapping the gainsetting as used on an RTLSDR 2832 based stick to
+Mapping the gain setting as used on an RTLSDR 2832 based stick to
 the more elaborate settings for SDRplay was found to be unsatisfactory.
 A decent balance has to be found between selecting the gain reduction
 in the LNA (by choosing an lna state) and the if Gain reduction.
@@ -110,6 +110,10 @@ while RTLSDR based sticks support a range of 960 KHz .. 2.5 MHz, the SDRplay
 supports 2 Mhz and up to 8 (or 10) Mhz.
 Samplesrates for the RTLSDR stick between 1 and 2 MHz are handled by the
 emulerator using the double of this rate and decimating with a factor of 2.
+
+The Windows version is still slightly experimental - for me (being a Unix/Linux
+person for the last 45 years) it is the very first program using a windows API directly -
+and it is most likely that some changes will be applied.
 
 ------------------------------------------------------------------------------
 Copyrights
