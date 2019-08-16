@@ -41,7 +41,7 @@ under Windows, the gain setting to the stick - as often done in the
 program - is cut short and a small dialog box shows that allows
 the precise setting for the lna state and the Gainreduction
 
-![dab scanner](/dab-scanner-1.6.png?raw=true)
+![rtlsdr emulator](/rtlsdr-emulator.png?raw=true)
 
 The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
