@@ -47,6 +47,16 @@ The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
 the gain reduction.
 
+------------------------------------------------------------------------------
+Use under Linux
+-------------------------------------------------------------------------------
+
+For Linux the gain setting as set by the user is translated in a setting for
+the LNA and one for the if gain reduction.
+The "algorithm" is that first the gain is translated into a gain reduction and
+the LNA is made "responsible" for one third of this, the other part to be delivered
+by the if gain reduction.
+
 -------------------------------------------------------------------------------
 Building a library file
 ------------------------------------------------------------------------------
@@ -56,7 +66,7 @@ is available.
 
 The  repository contains two makefiles, one for Linux and one
 for (cross) compilation for Windows.
-Note that the sources contain some compiler directives *#ifdef __MINGW32__*
+Note that the sources contain some compiler directives #ifdef __MINGW32__
 to separate the code sections for the windows version from the sections
 for the Linux version.
 
@@ -71,7 +81,13 @@ Issues
 There are quite some differences between the two API's, so there is not
 a 100% match. However, since in most cases only a subset of the rtlsdr
 API is used, it turns out that programs like acarsdec, dump1090, rtl_433,
-aiswatcher, dump978 run with the emulator.
+aiswatcher, dump978 run pretty well with the emulator.
+
+An issue is that the range of samplerate between the devices differs,
+while RTLSDR based sticks support a range of 960 KHz .. 2.5 MHz, the SDRplay
+supports 2 Mhz and up to 8 (or 10) Mhz.
+Samplesrates for the RTLSDR stick between 1 and 2 MHz are handled by the
+emulerator using the double of this rate and decimating with a factor of 2.
 
 ------------------------------------------------------------------------------
 Copyrights
