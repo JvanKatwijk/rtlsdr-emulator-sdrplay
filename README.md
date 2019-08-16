@@ -41,7 +41,7 @@ under Windows, the gain setting to the stick - as often done in the
 program - is cut short and a small dialog box shows that allows
 the precise setting for the lna state and the Gainreduction
 
-![rtlsdr emulator](/rtlsdr-emulator.png?raw=true)
+![rtlsdr emulator](/rtlsdr-emulator-windows.png?raw=true)
 
 The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
@@ -54,8 +54,12 @@ Use under Linux
 For Linux the gain setting as set by the user is translated in a setting for
 the LNA and one for the if gain reduction.
 The "algorithm" is that first the gain is translated into a gain reduction and
-the LNA is made "responsible" for one third of this, the other part to be delivered
-by the if gain reduction.
+the LNA is made "responsible" for one third of this,
+the other part to be delivered by the if gain reduction.
+
+Therefore, under Linux, using the emulator is completely transparant.
+
+![rtlsdr emulator](/rtlsdr-emulator-linux.png?raw=true)
 
 -------------------------------------------------------------------------------
 Building a library file
