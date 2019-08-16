@@ -1,6 +1,6 @@
 
+--------------------------------------------------------------------------
 rtlsdr emulator: Running rtlsdr-based software with an SDRplay device
-
 --------------------------------------------------------------------------
 
 There is no doubt that the (various) SDRplay RSP devices are technically
@@ -28,10 +28,10 @@ a translator from commands to the rtlsdr api to
 commands to the SDRplay api.
 
 -----------------------------------------------------------------------------
-Use under Windows
+Use under Windows (or how to run sdr# with the SDRplay)
 -----------------------------------------------------------------------------
 
-Mapping the gainsetting as used on an RTLSDR 2832 based stick to
+Mapping the gain setting as used on an RTLSDR 2832 based stick to
 the more elaborate settings for SDRplay was found to be unsatisfactory.
 A decent balance has to be found between selecting the gain reduction
 in the LNA (by choosing an lna state) and the if Gain reduction.
@@ -45,10 +45,23 @@ the precise setting for the lna state and the Gainreduction
 
 The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
-the gain reduction.
+the gain reduction. On the right one sees the original widget for the
+rtlsdr software, note that gain setting in this latter widget has no effect,
+gain setting is controlled by the SDRplay gain setting widget.
 
 ------------------------------------------------------------------------------
-Use under Linux
+Installing under Windows
+------------------------------------------------------------------------------
+
+Although it is quite well possible to build a dll file, the repository contains
+one, together with the other dll's needed to run the emulator.
+
+As an example, to run sdr# with the SDRplay, all dll's from the example folder
+which is part of the repository, are copied into the directory (folder)  of the SDR#,
+with the result as shown above.
+
+------------------------------------------------------------------------------
+Use under Linux 
 -------------------------------------------------------------------------------
 
 For Linux the gain setting as set by the user is translated in a setting for
@@ -62,11 +75,20 @@ Therefore, under Linux, using the emulator is completely transparant.
 ![rtlsdr emulator](/rtlsdr-emulator-linux.png?raw=true)
 
 -------------------------------------------------------------------------------
+Installing under Linux
+-------------------------------------------------------------------------------
+
+For Linux one - obviously - can create a shared library (see below).
+However, the repository contains a precompiled *librtlsdr.so* file, that
+can be placed in e.g. /usr/local/lib
+
+-------------------------------------------------------------------------------
 Building a library file
 ------------------------------------------------------------------------------
 
 For use under Windows, a precompiled version of the dll
-is available.
+is available. Best is to look at the example program, that contains
+all dll's necessary to run the emulated dll driver.
 
 The  repository contains two makefiles, one for Linux and one
 for (cross) compilation for Windows.
@@ -92,6 +114,10 @@ while RTLSDR based sticks support a range of 960 KHz .. 2.5 MHz, the SDRplay
 supports 2 Mhz and up to 8 (or 10) Mhz.
 Samplesrates for the RTLSDR stick between 1 and 2 MHz are handled by the
 emulerator using the double of this rate and decimating with a factor of 2.
+
+The Windows version is still slightly experimental - for me (being a Unix/Linux
+person for the last 45 years) it is the very first program using a windows API directly -
+and it is most likely that some changes will be applied.
 
 ------------------------------------------------------------------------------
 Copyrights
