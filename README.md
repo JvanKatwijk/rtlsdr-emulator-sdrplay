@@ -1,6 +1,6 @@
 
+--------------------------------------------------------------------------
 rtlsdr emulator: Running rtlsdr-based software with an SDRplay device
-
 --------------------------------------------------------------------------
 
 There is no doubt that the (various) SDRplay RSP devices are technically
