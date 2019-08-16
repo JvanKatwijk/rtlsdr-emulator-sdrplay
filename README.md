@@ -28,7 +28,7 @@ a translator from commands to the rtlsdr api to
 commands to the SDRplay api.
 
 -----------------------------------------------------------------------------
-Use under Windows
+Use under Windows (or how to run sdr# with the SDRplay)
 -----------------------------------------------------------------------------
 
 Mapping the gainsetting as used on an RTLSDR 2832 based stick to
@@ -50,7 +50,18 @@ rtlsdr software, note that gain setting in this latter widget has no effect,
 gain setting is controlled by the SDRplay gain setting widget.
 
 ------------------------------------------------------------------------------
-Use under Linux
+Installing under Windows
+------------------------------------------------------------------------------
+
+Although it is quite well possible to build a dll file, the repository contains
+one, together with the other dll's needed to run the emulator.
+
+As an example, to run sdr# with the SDRplay, all dll's from the example folder
+which is part of the repository, are copied into the directory (folder)  of the SDR#,
+with the result as shown above.
+
+------------------------------------------------------------------------------
+Use under Linux 
 -------------------------------------------------------------------------------
 
 For Linux the gain setting as set by the user is translated in a setting for
@@ -58,6 +69,14 @@ the LNA and one for the if gain reduction.
 The "algorithm" is that first the gain is translated into a gain reduction and
 the LNA is made "responsible" for one third of this, the other part to be delivered
 by the if gain reduction.
+
+-------------------------------------------------------------------------------
+Installing under Linux
+-------------------------------------------------------------------------------
+
+For Linux one - obviously - can create a shared library (see below).
+However, the repository contains a precompiled *librtlsdr.so* file, that
+can be placed in e.g. /usr/local/lib
 
 -------------------------------------------------------------------------------
 Building a library file
