@@ -27,43 +27,42 @@ be named for some windows executables) is merely
 a translator from commands to the rtlsdr api to
 commands to the SDRplay api.
 
--------------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 Use under Windows
+-----------------------------------------------------------------------------
+
+Mapping the gainsetting as used on an RTLSDR 2832 based stick to
+the more elaborate settings for SDRplay was found to be unsatisfactory.
+A decent balance has to be found between selecting the gain reduction
+in the LNA (by choosing an lna state) and the if Gain reduction.
+
+Therefore, for Windows an alternative solution is being developed,
+under Windows, the gain setting to the stick - as often done in the
+program - is cut short and a small dialog box shows that allows
+the precise setting for the lna state and the Gainreduction
+
+![dab scanner](/dab-scanner-1.6.png?raw=true)
+
+The picture shows - top left - a small dialog box "owned" by the
+rtlsdr.dll file that allows a precise setting of the lna state and
+the gain reduction.
+
+-------------------------------------------------------------------------------
+Building a library file
 ------------------------------------------------------------------------------
 
 For use under Windows, a precompiled version of the dll
 is available.
-This repository contains a zipped folder with - as example - the
-rtl433.exe program (Copyright Benjamin Larsson (merbanan on github)),
-together with the fake librtlsdr.dll and other
-required libraries to run the rtl_433.exe program.
 
------------------------------------------------------------------------------
-Creating - and using - the library under Linux
------------------------------------------------------------------------------
-
-It will be no surprise that the usage under Linux is more or less
-the same as it is under Windows: just replace the librtlsdr.so by the
-newly generated fake one.
-
-(For simplicity reasons, the include files for both libraries are included)
-Execute
-
-	gcc -O2 -fPIC -shared  -I . -o librtlsdr.so rtlsdr-bridge.c -lmirsdrapi-rsp
-
-and replace the librtlsdr.so* files in - most likely - /usr/local/lib by
-this new librtlsdr.so.
-
-If you want to see some of the parameters used for the SDRplay, add
-
-	-D__DEBUG__
-
-to the command line.
-
-The SDRplay will then be able to behave (to a large extend)
-as an RTLDSDR device if an RTLSDR device is asked for.
+The  repository contains two makefiles, one for Linux and one
+for (cross) compilation for Windows.
+Note that the sources contain some compiler directives *#ifdef __MINGW32__*
+to separate the code sections for the windows version from the sections
+for the Linux version.
 
 The "librtlsdr.so" file in the repository was made under Fedora 
+The "rtlsdr.dll" file in the respository was made under Fedora, using
+the Mingw64 32bits resource and C compilers.
 
 ------------------------------------------------------------------------------
 Issues
@@ -73,35 +72,6 @@ There are quite some differences between the two API's, so there is not
 a 100% match. However, since in most cases only a subset of the rtlsdr
 API is used, it turns out that programs like acarsdec, dump1090, rtl_433,
 aiswatcher, dump978 run with the emulator.
-
-The major "issue" - still being worked on - is the translation of
-the gain setting of the DAB sticks.
-It turns out - playing around with e.g. acarsdec that the result
-is pretty depending on the selection of the right
-lnaState and Gain Reduction for the SDRplay
-
-
-The current "approach' is - for the RSPII - for lower frequencies (< 420M)
-table driven, it works reasonably wel with the acarsdec software.
-
----------------------------------------------------------------------------
-Creating a DLL for use under Windows
----------------------------------------------------------------------------
-
-For creating a DLL the mingw32 environment is used. 
-
-Under Windows, assuming you have msys2 (with mingw32) installed
-(with gcc compiler), 
-execute
-
-	i686-w64-mingw32-gcc -O2 -fPIC -shared -I . -o rtlsdr.dll rtlsdr-bridge.c mir_sdr_api.dll.a
-
-The command will generate a dll, "rtlsdr.dll" that can be used instead of
-the original one.
-A suggestion is to copy the original rtlsdr.dll to rtlsdr.dll-rtldevice
-
-Note that for using the mingw32 compilers, one does need the ".dll.a" file,
-which for reasons of convenience is part of the distribution
 
 ------------------------------------------------------------------------------
 Copyrights
