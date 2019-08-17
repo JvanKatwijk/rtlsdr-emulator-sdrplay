@@ -45,7 +45,10 @@ the precise setting for the lna state and the Gainreduction
 
 The picture shows - top left - a small dialog box "owned" by the
 rtlsdr.dll file that allows a precise setting of the lna state and
-the gain reduction. On the right one sees the original widget for the
+the gain reduction. The small checkbox in the dialog window is
+for controlling the setting of the AGC.
+
+ On the right one sees the original widget for the
 rtlsdr software, note that gain setting in this latter widget has no effect,
 gain setting is controlled by the SDRplay gain setting widget.
 

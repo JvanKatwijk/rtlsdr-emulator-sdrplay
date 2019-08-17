@@ -8,3 +8,4 @@
 #define	IDC_DAY_SPIN	1005
 #define	IDC_MONTH_SPIN	1006
 #define	IDC_RESET	1007
+#define	IDC_AGC		1008

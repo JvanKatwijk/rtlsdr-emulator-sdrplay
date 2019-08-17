@@ -119,13 +119,41 @@ void	set_GRdB (int GRdB) {
 	mir_sdr_RSP_SetGr (devDescriptor. GRdB,
 	                   devDescriptor. lnaState, 1, 0);
 }
-	   
+
+void	set_agc	(bool onOff) {
+mir_sdr_ErrT err;
+
+	devDescriptor. agcOn	= onOff;
+	err = mir_sdr_AgcControl (onOff ?
+	                          mir_sdr_AGC_100HZ :
+	                          mir_sdr_AGC_DISABLE,
+	                          -devDescriptor. GRdB,
+	                          0, 0, 0, 0, devDescriptor. lnaState);
+	if (err != mir_sdr_Success) {
+	   fprintf (stderr,
+	            "Error %s on mir_sdr_AgcControl\n", sdrplay_errorCodes (err));
+	   return;
+	}
+	if (!onOff) {
+	   err	=  mir_sdr_RSP_SetGr (devDescriptor. GRdB,
+	                              devDescriptor. lnaState, 1, 0);
+	   if (err != mir_sdr_Success) {
+	      fprintf (stderr,
+	            "Error %s on mir_sdr_RSP_SetGr\n",
+	                                sdrplay_errorCodes (err));
+	      return;
+	   }
+	}
+	fprintf (stderr, "agc is %sgezet\n", onOff ? "aan" : "uit");
+}
+
 static
 HINSTANCE hInstance 	= 0;
 static
 int	old_lnaState	= 4;
 static
 int	old_GRdB	= 20;
+
 INT_PTR CALLBACK Dialog1Proc (HWND hwndDlg, UINT uMsg,
 	                          WPARAM wParam, LPARAM lParam) {
 int	nCode;
@@ -171,12 +199,30 @@ int		newVal;
 	            }
 	            break;
 
+	         case IDC_AGC:
+	            if (!SendDlgItemMessage (hwndDlg,
+	                                    IDC_AGC, BM_GETCHECK, 0, 0)) {
+	               SendDlgItemMessage (hwndDlg, IDC_AGC,
+	                                   BM_SETCHECK, BST_CHECKED, 0);
+	                set_agc (true);
+	            }
+	            else {
+	               SendDlgItemMessage (hwndDlg, IDC_AGC,
+	                                   BM_SETCHECK, BST_UNCHECKED, 0);
+	               set_agc (false);
+	            }
+	            break;
+
 	         case IDC_RESET:
-	            devDescriptor. lnaState = devDescriptor. lna_startState;
-	            devDescriptor. GRdB	= 20;
+	            devDescriptor. lnaState	= devDescriptor.
+	                                                   lna_startState;
+	            devDescriptor. GRdB		= 20;
 	            SetDlgItemInt (hwndDlg, IDC_LNA_STATE, 4, FALSE);
 	            SetDlgItemInt (hwndDlg, IDC_GRdB, 20, FALSE);
 	            set_GRdB (20);
+	            SendDlgItemMessage (hwndDlg, IDC_AGC,
+	                                   BM_SETCHECK, BST_UNCHECKED, 0);
+	            set_agc (false);
 	            old_GRdB	= 20;
 	            break;
 
@@ -593,6 +639,9 @@ RTLSDR_API int rtlsdr_set_sample_rate (rtlsdr_dev_t *dev,
 RTLSDR_API int rtlsdr_set_agc_mode (rtlsdr_dev_t *dev, int on) {
 mir_sdr_ErrT    err;
 
+#ifdef	__MINGW32__
+	return 0;
+#else
 	fprintf (stderr, "switching agc mode to %s\n",
 	                               on == 1 ? "on" : "off");
 	if (dev == NULL)
@@ -629,6 +678,7 @@ mir_sdr_ErrT    err;
 	}
 	dev -> agcOn	= on != 0;
 	return 0;
+#endif
 }
 
 /* streaming functions */
