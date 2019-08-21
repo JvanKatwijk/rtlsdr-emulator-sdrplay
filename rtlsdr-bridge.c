@@ -45,7 +45,8 @@
 static
 char    *sdrplay_errorCodes (mir_sdr_ErrT err);
 bool	installDevice ();
-//	our version of the device descriptor
+//	our version of the device descriptor is a mix
+//	of rtlsdr and sdrplay settings
 struct rtlsdr_dev {
 	int	deviceIndex;
 	int	hwVersion;
@@ -103,6 +104,7 @@ bool	set_lnaState (int state) {
 int *lnaTable;
 
 	switch (devDescriptor. hwVersion) {
+	   default:
 	   case 1:	// "old" RSP1
 	      lnaTable = getTable_RSP1 (devDescriptor. frequency);
 	      break;
@@ -126,11 +128,14 @@ int *lnaTable;
 	return false;
 }
 //
-//	The caller will check the boundaries
-void	set_GRdB (int GRdB) {
-	devDescriptor. GRdB = GRdB;
-	mir_sdr_RSP_SetGr (devDescriptor. GRdB,
-	                   devDescriptor. lnaState - 1, 1, 0);
+bool	set_GRdB (int GRdB) {
+mir_sdr_ErrT err;
+
+	if ((GRdB < MIN_GRdB) || (GRdB > MAX_GRdB))
+	   return false;
+	err = mir_sdr_RSP_SetGr (GRdB, devDescriptor. lnaState - 1, 1, 0);
+	if (err != mir_sdr_Success)
+	   return false;
 }
 
 void	set_agc	(bool onOff) {
@@ -199,13 +204,13 @@ int		newVal;
 	         case IDC_GRdB:
 	            newVal = GetDlgItemInt (hwndDlg, IDC_GRdB,
 	                                         &success, FALSE);
-	            if ((newVal < MIN_GRdB) || (newVal > MAX_GRdB))
+	            if (set_GRdB (newVal)) {
+	               devDescriptor. GRdB	= newVal;
+	               devDescriptor. old_GRdB	= newVal;
+	            }
+	            else
 	               SetDlgItemInt (hwndDlg, IDC_GRdB,
 	                              devDescriptor. old_GRdB, FALSE);
-	            else {
-	               set_GRdB (newVal);
-	               devDescriptor. old_GRdB = newVal;
-	            }
 	            break;
 
 	         case IDC_AGC:
