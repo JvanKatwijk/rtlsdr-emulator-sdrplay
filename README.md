@@ -36,10 +36,11 @@ the more elaborate settings for SDRplay was found to be unsatisfactory.
 A decent balance has to be found between selecting the gain reduction
 in the LNA (by choosing an lna state) and the if Gain reduction.
 
-Therefore, for Windows an alternative solution is being developed,
-under Windows, the gain setting to the stick - as often done in the
-program - is cut short and a small dialog box shows that allows
-the precise setting for the lna state and the Gainreduction
+Therefore, for Windows an alternative solution is being developed:
+under Windows the gain setting to the stick - as often done in the
+program - is cut short and instead, the user controls gain
+through a small dialog box shows that allows
+the precise setting for the lna state, Gainreduction and agc.
 
 ![rtlsdr emulator](/rtlsdr-emulator-windows.png?raw=true)
 
