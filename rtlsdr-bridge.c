@@ -33,15 +33,18 @@
 //	uncomment __DEBUG__ for lots of output
 //#define	__DEBUG__	1
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
-#define	__SHORT__	0
+//#define	__SHORT__	0
 
 #define	KHz(x)	(1000 * x)
 #define	MHz(x)	(1000 * KHz (x))
 
+#define	MAX_GRdB	59
+#define	MIN_GRdB	20
+
+//	defined later on in this file
 static
 char    *sdrplay_errorCodes (mir_sdr_ErrT err);
 bool	installDevice ();
-//	defined later on in this file
 //	our version of the device descriptor
 struct rtlsdr_dev {
 	int	deviceIndex;
@@ -56,7 +59,9 @@ struct rtlsdr_dev {
 	int	tunerGain;
 	int	lnaState;
 	int	lna_startState;
-	uint8_t	gainMode;
+	int	old_lnaState;
+	int	old_GRdB;
+	bool	gainMode;
 	bool	agcOn;
 //
 //	In this implementation inputRate and outputRate may differ
@@ -71,14 +76,17 @@ struct rtlsdr_dev {
 	int	buf_num;
 	int	buf_len;
 	int	fbP;
+	bool	running;
+#ifdef	__MINGW32__
+	bool	open;
+	HWND	widgetHandle;
+#endif
 } devDescriptor;
 
 static
 mir_sdr_DeviceT devDesc [4];
 static
 int	numofDevs	= -1;
-static
-bool	running		= 0;
 static
 theSignal	*signalQueue	= NULL;
 
@@ -87,9 +95,13 @@ static
 pthread_t	thread_id;
 static
 int started	= 0;
-
+//
+//	These functions will be called in the W32
+//	version, directly from handling the widget
+//
 bool	set_lnaState (int state) {
 int *lnaTable;
+
 	switch (devDescriptor. hwVersion) {
 	   case 1:	// "old" RSP1
 	      lnaTable = getTable_RSP1 (devDescriptor. frequency);
@@ -104,20 +116,21 @@ int *lnaTable;
 	      break;
 
 	}
-	if ((0 <= state) && (state <= lnaTable [0])) {
+
+	if ((0 < state) && (state <= lnaTable [0])) {
 	   devDescriptor. lnaState = state;
 	   mir_sdr_RSP_SetGr (devDescriptor. GRdB,
-	                      devDescriptor. lnaState, 1, 0);
+	                      devDescriptor. lnaState - 1, 1, 0);
 	   return true;
 	}
-	return FALSE;
+	return false;
 }
 //
 //	The caller will check the boundaries
 void	set_GRdB (int GRdB) {
 	devDescriptor. GRdB = GRdB;
 	mir_sdr_RSP_SetGr (devDescriptor. GRdB,
-	                   devDescriptor. lnaState, 1, 0);
+	                   devDescriptor. lnaState - 1, 1, 0);
 }
 
 void	set_agc	(bool onOff) {
@@ -128,15 +141,16 @@ mir_sdr_ErrT err;
 	                          mir_sdr_AGC_100HZ :
 	                          mir_sdr_AGC_DISABLE,
 	                          -devDescriptor. GRdB,
-	                          0, 0, 0, 0, devDescriptor. lnaState);
+	                          0, 0, 0, 0, devDescriptor. lnaState - 1);
 	if (err != mir_sdr_Success) {
 	   fprintf (stderr,
 	            "Error %s on mir_sdr_AgcControl\n", sdrplay_errorCodes (err));
 	   return;
 	}
+
 	if (!onOff) {
 	   err	=  mir_sdr_RSP_SetGr (devDescriptor. GRdB,
-	                              devDescriptor. lnaState, 1, 0);
+	                              devDescriptor. lnaState - 1, 1, 0);
 	   if (err != mir_sdr_Success) {
 	      fprintf (stderr,
 	            "Error %s on mir_sdr_RSP_SetGr\n",
@@ -144,20 +158,15 @@ mir_sdr_ErrT err;
 	      return;
 	   }
 	}
-	fprintf (stderr, "agc is %sgezet\n", onOff ? "aan" : "uit");
 }
 
 static
-HINSTANCE hInstance 	= 0;
-static
-int	old_lnaState	= 4;
-static
-int	old_GRdB	= 20;
+HMODULE hInstance 	= 0;
 
 INT_PTR CALLBACK Dialog1Proc (HWND hwndDlg, UINT uMsg,
 	                          WPARAM wParam, LPARAM lParam) {
-int	nCode;
-int	iPosIndicated;
+int		nCode;
+int		iPosIndicated;
 LPNMUPDOWN	lpnmud;
 BOOL		success;
 int		newVal;
@@ -166,36 +175,36 @@ int		newVal;
 	   case WM_INITDIALOG:
 	      SetDlgItemInt (hwndDlg, IDC_LNA_STATE, 
 	                          devDescriptor. lna_startState, FALSE);
-	      SetDlgItemInt (hwndDlg, IDC_GRdB, 20, FALSE);
-//	      old_lnaState	= devDescriptor. lna_startState;
-//	      old_GRdB		= 20;
-	      return (INT_PTR)TRUE;
+	      SetDlgItemInt (hwndDlg, IDC_GRdB, MIN_GRdB, FALSE);
+	      return true;
 
 	   case WM_COMMAND:
-	      switch (LOWORD(wParam)) {
+	      switch (LOWORD (wParam)) {
 	         case IDOK:
 	         case IDCANCEL:
 	            EndDialog (hwndDlg, LOWORD(wParam));
-	            return (INT_PTR)TRUE;
+	            return true;;
 
 	         case IDC_LNA_STATE:
 	            newVal = GetDlgItemInt (hwndDlg, IDC_LNA_STATE,
 	                                         &success, FALSE);
-	            if (!set_lnaState (newVal)) 
-	               SetDlgItemInt (hwndDlg, IDC_LNA_STATE,
-	                                         old_lnaState, FALSE);
+	            if (set_lnaState (newVal)) 
+	               devDescriptor. old_lnaState = newVal;
 	            else
-	               old_lnaState = newVal;
+	               SetDlgItemInt (hwndDlg,
+	                              IDC_LNA_STATE,
+	                              devDescriptor. old_lnaState, FALSE);
 	             break;
 
 	         case IDC_GRdB:
 	            newVal = GetDlgItemInt (hwndDlg, IDC_GRdB,
 	                                         &success, FALSE);
-	            if ((newVal < 20) || (newVal > 59))
-	               SetDlgItemInt (hwndDlg, IDC_GRdB, old_GRdB, FALSE);
+	            if ((newVal < MIN_GRdB) || (newVal > MAX_GRdB))
+	               SetDlgItemInt (hwndDlg, IDC_GRdB,
+	                              devDescriptor. old_GRdB, FALSE);
 	            else {
 	               set_GRdB (newVal);
-	               old_GRdB = newVal;
+	               devDescriptor. old_GRdB = newVal;
 	            }
 	            break;
 
@@ -216,14 +225,15 @@ int		newVal;
 	         case IDC_RESET:
 	            devDescriptor. lnaState	= devDescriptor.
 	                                                   lna_startState;
-	            devDescriptor. GRdB		= 20;
-	            SetDlgItemInt (hwndDlg, IDC_LNA_STATE, 4, FALSE);
-	            SetDlgItemInt (hwndDlg, IDC_GRdB, 20, FALSE);
-	            set_GRdB (20);
+	            devDescriptor. GRdB		= MIN_GRdB;
+	            devDescriptor. old_GRdB	= MIN_GRdB;
+	            SetDlgItemInt (hwndDlg, IDC_LNA_STATE,
+	                           devDescriptor. lna_startState, FALSE);
+	            SetDlgItemInt (hwndDlg, IDC_GRdB, MIN_GRdB, FALSE);
+	            set_GRdB (MIN_GRdB);
 	            SendDlgItemMessage (hwndDlg, IDC_AGC,
 	                                   BM_SETCHECK, BST_UNCHECKED, 0);
 	            set_agc (false);
-	            old_GRdB	= 20;
 	            break;
 
 	         default:
@@ -231,7 +241,7 @@ int		newVal;
 //	                               LOWORD (wParam), HIWORD (wParam));
 	            break;
 	      }
-	      break;
+	      return true;
 
 	   case WM_NOTIFY:
 	      nCode = ((LPNMHDR)lParam) -> code;
@@ -249,16 +259,44 @@ int		newVal;
                     break;
 	      }
 	      break;
+
+	   default:
+	      return false;
 	}
-	return (INT_PTR)FALSE;
+	return true;
 }
 
 void	*StartDialog (void * varg) {
 int err;
-        DialogBox (hInstance,
-                   MAKEINTRESOURCE(IDD_DIALOG1), NULL, Dialog1Proc);
+	devDescriptor. old_lnaState	= devDescriptor. lna_startState;
+	devDescriptor. old_GRdB		= MIN_GRdB;
+	devDescriptor. lnaState		= devDescriptor. lna_startState;
+	devDescriptor. GRdB		= MIN_GRdB;
+
+	devDescriptor. widgetHandle =
+	                  CreateDialog (hInstance,
+                                        MAKEINTRESOURCE (IDD_DIALOG1),
+	                                NULL, Dialog1Proc);
 	err	= GetLastError ();
 	fprintf (stderr, "Last Error = %d\n", err);
+	if (err == 0) {
+	   ShowWindow (devDescriptor. widgetHandle, SW_SHOW);
+	   MSG msg;
+	   devDescriptor. open	= true;
+	   while (devDescriptor. open && GetMessage (&msg, NULL, 0, 0)) {
+	      if (!IsWindow (devDescriptor. widgetHandle))
+	         break;
+	      if (IsDialogMessage (devDescriptor. widgetHandle, &msg)) 
+	         continue;
+	      TranslateMessage (&msg);
+	      DispatchMessage  (&msg);
+	   }
+	   if (IsWindow (devDescriptor. widgetHandle)) {
+	      int nResult = -1;
+	      EndDialog (devDescriptor. widgetHandle, nResult);
+	      fprintf (stderr, "enddialog has result %d\n", nResult);
+	   }
+	}
 }
 
 BOOL WINAPI DllMain (HMODULE hModule, DWORD dwReason, LPVOID lpvReserver) {
@@ -270,17 +308,21 @@ INT_PTR ptr;
 	      if (!installDevice ())
 	         return FALSE;
 	      started	= 1;
-	      
+	      devDescriptor. widgetHandle	= NULL;
 	      hInstance	= hModule;
+	      numofDevs	= -1;
 	      return TRUE;
 
 	   case DLL_PROCESS_DETACH:
+	      fprintf (stderr, "detach called with %d\n", dwReason);
 	      break;
 
 	   case DLL_THREAD_ATTACH:
+	      fprintf (stderr, "thread attach called with %d\n", dwReason);
 	      break;
 
 	   case DLL_THREAD_DETACH:
+	      fprintf (stderr, "thread detach called with %d\n", dwReason);
 	      break;
 	}
 	return TRUE;
@@ -408,6 +450,9 @@ RTLSDR_API int rtlsdr_open (rtlsdr_dev_t **dev,
 	                    uint32_t deviceIndex) {
 mir_sdr_ErrT err;
 
+#ifdef	MINGW32__
+	devDescriptor. open = false;
+#endif
 	if ((numofDevs < 0) && !installDevice ()) {
 	   return -1;
 	}
@@ -453,11 +498,11 @@ mir_sdr_ErrT err;
 	(*dev) -> deviceIndex	= deviceIndex;
 
 //	default values
-	running				= false;
+	devDescriptor. running		= false;
 	devDescriptor. GRdB		= 45;
 	devDescriptor. lnaState		= 3;
 	devDescriptor. tunerGain	= 40;
-	devDescriptor. gainMode		= 0;
+	devDescriptor. gainMode		= false;
 	devDescriptor. agcOn		= false;
 	devDescriptor. inputRate	= 2048000;
 	devDescriptor. outputRate	= 2048000;
@@ -472,16 +517,22 @@ mir_sdr_ErrT err;
 }
 
 RTLSDR_API int rtlsdr_close (rtlsdr_dev_t *dev) {
+#ifdef	__MINGW32__
+int	nResult	= -1;
+#endif
 	if (dev == NULL)
 	   return -1;
 
-	if (running)
+	if (dev -> running)
 	   rtlsdr_cancel_async (dev);
-
+	dev -> running	= false;
 #ifdef __DEBUG__
 	fprintf (stderr, "going to release the device\n");
 #endif
 	mir_sdr_ReleaseDeviceIdx ();
+#ifdef	__MINGW32__
+	dev	-> open = false;
+#endif
 #ifdef	__DEBUG__
 	fprintf (stderr, "close completed\n");
 #endif
@@ -493,7 +544,7 @@ mir_sdr_ErrT    err;
 	if (dev == NULL)
 	   return -1;
 
-	if (!running) 	// record for later use
+	if (!dev -> running) 	// record for later use
 	   dev -> frequency = freq;
 	else
 	if (bankFor_sdr (dev -> frequency) == bankFor_sdr (freq)) {
@@ -513,7 +564,7 @@ RTLSDR_API int rtlsdr_set_freq_correction (rtlsdr_dev_t *dev,
 
 	dev -> ppm	= ppm;
 
-	if (!running)		// will be handled later on
+	if (!dev -> running)	// will be handled later on
 	   return 0;
 	mir_sdr_SetPpm    ((float)ppm);
 	return 0;
@@ -579,7 +630,7 @@ int	i;
 	   }
 	}
 	dev	-> tunerGain	= gain;
-	if ((dev -> agcOn) || !running)
+	if ((dev -> agcOn) || !dev -> running)
 	   return 0;
 
 	err     =  mir_sdr_RSP_SetGr (dev -> GRdB,  dev -> lnaState, 1, 0);
@@ -602,7 +653,7 @@ RTLSDR_API int rtlsdr_set_tuner_bandwidth (rtlsdr_dev_t *dev, uint32_t bw) {
 	if (bw == dev -> bandWidth)
 	   return 0;
 	dev -> bandWidth = bw;	// handling will be later on
-	if (running)
+	if (dev -> running)
 	   putSignalonQueue (&signalQueue, SET_BW, bw);
 	return 0;
 }
@@ -631,7 +682,7 @@ RTLSDR_API int rtlsdr_set_sample_rate (rtlsdr_dev_t *dev,
 	                                                 dev -> inputRate);
 	   return -1;
 	}
-	if (running) 
+	if (dev -> running) 
 	   putSignalonQueue (&signalQueue, SET_RATE, rate);
 	return 0;
 }
@@ -650,7 +701,7 @@ mir_sdr_ErrT    err;
 	if (dev -> agcOn == on != 0)
 	   return 0;
 
-	if (!running) {		// save for later
+	if (!dev -> running) {		// save for later
 	   dev -> agcOn = on != 0;
 	   return 0;
 	}
@@ -839,7 +890,7 @@ int     localGRed;
 	if (dev == NULL)
 	   return -1;
 
-	if (running)
+	if (dev -> running)
 	   return -1;
 
 //	just to prevent errors from streamInit
@@ -880,7 +931,7 @@ int     localGRed;
 	if (err != mir_sdr_Success) {
 	   fprintf (stderr,
 	            "Error %s on streamInit\n", sdrplay_errorCodes (err));
-	   running = false;
+	   dev -> running = false;
 	   return -1;
 	}
 #ifdef	__DEBUG__
@@ -890,11 +941,11 @@ int     localGRed;
 	if (err != mir_sdr_Success) 
 	   return -1;
 
-	running		= true;
+	dev -> running	= true;
 	err		= mir_sdr_SetPpm    ((float)dev -> ppm);
 //
 //	we make this into a simple event loop with semaphores
-	while (running) {
+	while (dev -> running) {
 	   int	signal;
 	   int	value;
 	   mir_sdr_ErrT err;
@@ -910,7 +961,7 @@ int     localGRed;
 //#ifdef	__DEBUG__
 	         fprintf (stderr, "cancel request\n");
 //#endif
-	         running = false;
+	         dev -> running = false;
 	         goto L_end;
 
 	      case SET_FREQUENCY:
@@ -986,16 +1037,16 @@ L_end:
 //
 RTLSDR_API int rtlsdr_cancel_async (rtlsdr_dev_t *dev) {
 #ifdef	__DEBUG__
-	fprintf (stderr, "cancel is called, running = %d\n", running);
+	fprintf (stderr, "cancel is called, running = %d\n", dev -> running);
 #endif
 	if (dev == NULL)
 	   return -1;
 
-	if (!running)
+	if (!dev -> running)
 	   return 0;
 
 	putSignalonQueue (&signalQueue, CANCEL_ASYNC, 0);
-	while (running)
+	while (dev -> running)
 #ifdef	__MINGW32__
 	   Sleep (1);
 #else
