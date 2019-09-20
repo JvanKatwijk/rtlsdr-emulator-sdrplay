@@ -1,0 +1,11 @@
+
+all:	rtlsdr.dll
+
+rtlsdr.dll:	rtlsdr-bridge.c signal-queue.c gains.h gains.c rtlsdr-bridge-resource.o
+	gcc -O2 -fPIC -g -shared  -D__MINGW32__ -D__DEBUG__ -D__SHORT__  -I . -I /usr/i686-w64-mingw32/sysroot/mingw/include  -o rtlsdr.dll rtlsdr-bridge.c signal-queue.c gains.c  rtlsdr-bridge-resource.o mir_sdr_api.dll.a libwinpthread-1.dll -lgdi32
+
+rtlsdr-bridge-resource.o	: rtlsdr-bridge.rc
+	windres rtlsdr-bridge.rc rtlsdr-bridge-resource.o
+
+clean:
+	rm *.o rtlsdr.dll

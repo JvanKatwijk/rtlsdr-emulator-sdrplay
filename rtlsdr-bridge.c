@@ -182,7 +182,10 @@ int		newVal;
 	      switch (LOWORD (wParam)) {
 	         case IDOK:
 	         case IDCANCEL:
-	            EndDialog (hwndDlg, LOWORD(wParam));
+	            fprintf (stderr, "about to delete through id/cancel\n");
+	            if (devDescriptor. widgetHandle != NULL)
+	               DestroyWindow (devDescriptor. widgetHandle);
+	            devDescriptor. widgetHandle = NULL;
 	            return true;;
 
 	         case IDC_LNA_STATE:
@@ -243,23 +246,6 @@ int		newVal;
 	      }
 	      return true;
 
-	   case WM_NOTIFY:
-	      nCode = ((LPNMHDR)lParam) -> code;
-//	      fprintf (stderr, "nCode = %d\n", nCode);
-	      switch (nCode) {
-	         case UDN_DELTAPOS:
-                    lpnmud  = (LPNMUPDOWN)lParam;
-                    iPosIndicated = SendMessage (hwndDlg, PBM_GETPOS,
-	                                           (WPARAM)0, (LPARAM)0);
-                    SendMessage (hwndDlg,
-                                PBM_SETPOS,
-                                (WPARAM)(iPosIndicated + lpnmud->iDelta),  // iPosIndicated can have
-                                (LPARAM)0);                                // any signed integer value.
-
-                    break;
-	      }
-	      break;
-
 	   default:
 	      return false;
 	}
@@ -291,11 +277,6 @@ int err;
 	      TranslateMessage (&msg);
 	      DispatchMessage  (&msg);
 	   }
-	   if (IsWindow (devDescriptor. widgetHandle)) {
-	      int nResult = -1;
-	      EndDialog (devDescriptor. widgetHandle, nResult);
-	      fprintf (stderr, "enddialog has result %d\n", nResult);
-	   }
 	}
 }
 
@@ -314,15 +295,17 @@ INT_PTR ptr;
 	      return TRUE;
 
 	   case DLL_PROCESS_DETACH:
-	      fprintf (stderr, "detach called with %d\n", dwReason);
+	      if (devDescriptor. widgetHandle != NULL)
+	         DestroyWindow (devDescriptor. widgetHandle);
+	       devDescriptor. widgetHandle = NULL;
 	      break;
 
 	   case DLL_THREAD_ATTACH:
-	      fprintf (stderr, "thread attach called with %d\n", dwReason);
+//	      fprintf (stderr, "thread attach called with %d\n", dwReason);
 	      break;
 
 	   case DLL_THREAD_DETACH:
-	      fprintf (stderr, "thread detach called with %d\n", dwReason);
+//	      fprintf (stderr, "thread detach called with %d\n", dwReason);
 	      break;
 	}
 	return TRUE;
@@ -522,7 +505,7 @@ int	nResult	= -1;
 #endif
 	if (dev == NULL)
 	   return -1;
-
+	
 	if (dev -> running)
 	   rtlsdr_cancel_async (dev);
 	dev -> running	= false;
@@ -536,6 +519,10 @@ int	nResult	= -1;
 #ifdef	__DEBUG__
 	fprintf (stderr, "close completed\n");
 #endif
+	fprintf (stderr, "about to delete through close\n");
+	if (devDescriptor. widgetHandle != NULL)
+	   DestroyWindow (devDescriptor. widgetHandle);
+	devDescriptor. widgetHandle = NULL;
 }
 
 RTLSDR_API int rtlsdr_set_center_freq (rtlsdr_dev_t *dev,
