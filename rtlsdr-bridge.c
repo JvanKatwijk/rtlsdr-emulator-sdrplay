@@ -515,7 +515,6 @@ int	nResult	= -1;
 	mir_sdr_ReleaseDeviceIdx ();
 #ifdef	__MINGW32__
 	dev	-> open = false;
-#endif
 #ifdef	__DEBUG__
 	fprintf (stderr, "close completed\n");
 #endif
@@ -523,6 +522,7 @@ int	nResult	= -1;
 	if (devDescriptor. widgetHandle != NULL)
 	   DestroyWindow (devDescriptor. widgetHandle);
 	devDescriptor. widgetHandle = NULL;
+#endif
 }
 
 RTLSDR_API int rtlsdr_set_center_freq (rtlsdr_dev_t *dev,
