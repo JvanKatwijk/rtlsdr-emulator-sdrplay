@@ -77,6 +77,7 @@ struct rtlsdr_dev {
 	int	buf_len;
 	int	fbP;
 	bool	running;
+	bool	testMode;
 #ifdef	__MINGW32__
 	bool	open;
 	HWND	widgetHandle;
@@ -487,6 +488,7 @@ mir_sdr_ErrT err;
 	devDescriptor. tunerGain	= 40;
 	devDescriptor. gainMode		= false;
 	devDescriptor. agcOn		= false;
+	devDescriptor. testMode		= false;
 	devDescriptor. inputRate	= 2048000;
 	devDescriptor. outputRate	= 2048000;
 	devDescriptor. frequency	= MHz (220);
@@ -751,6 +753,7 @@ RTLSDR_API int rtlsdr_wait_async (rtlsdr_dev_t *dev,
 
 static  int8_t  *finalBuffer    = NULL;
 
+static	int16_t testmode_Counter	= 0;
 static
 void myStreamCallback (int16_t		*xi,
 	               int16_t		*xq,
@@ -785,15 +788,24 @@ static	int	decimator	= 0;
 	      xi [i] = (xi [i] + old_xi) / 2;
 	      xq [i] = (xq [i] + old_xq) / 2;
 	   }
+	   if (ctx -> testMode) {
+	      finalBuffer [ctx -> fbP ++] = testmode_Counter;
+	      testmode_Counter = (testmode_Counter + 1) & 0xFF;
+	      finalBuffer [ctx -> fbP ++] = testmode_Counter;
+	      testmode_Counter = (testmode_Counter + 1) & 0xFF;
+	   }
+	   else {	// the normal case
+	
 #ifdef  __SHORT__
-	   finalBuffer [ctx -> fbP++] = (int8_t)((xi [i] >> shiftFactor) & 0xFF) + 128;
-	   finalBuffer [ctx -> fbP++] = (int8_t)((xq [i] >> shiftFactor) & 0xFF) + 128;
+	      finalBuffer [ctx -> fbP++] = (int8_t)((xi [i] >> shiftFactor) & 0xFF) + 128;
+	      finalBuffer [ctx -> fbP++] = (int8_t)((xq [i] >> shiftFactor) & 0xFF) + 128;
 #else
-	   finalBuffer [ctx -> fbP++] =
+	      finalBuffer [ctx -> fbP++] =
 	                      (int8_t)((float)(xi [i]) * 128.0 / downScale) + 128;
-	   finalBuffer [ctx -> fbP++] =
+	      finalBuffer [ctx -> fbP++] =
 	                      (int8_t)((float)(xq [i]) * 128.0 / downScale) + 128;
 #endif
+	   }
 	   if (ctx -> fbP >= ctx -> buf_len) {
 	      ctx -> callback (finalBuffer,
 	                       ctx -> buf_len,
@@ -924,9 +936,9 @@ int     localGRed;
 #ifdef	__DEBUG__
 	fprintf (stderr, "rtlsdr_read_async is started\n");
 #endif
-	err = handle_gainSetting (dev);
-	if (err != mir_sdr_Success) 
-	   return -1;
+//	err = handle_gainSetting (dev);
+//	if (err != mir_sdr_Success) 
+//	   return -1;
 
 	dev -> running	= true;
 	err		= mir_sdr_SetPpm    ((float)dev -> ppm);
@@ -1099,7 +1111,7 @@ RTLSDR_API uint32_t rtlsdr_get_sample_rate (rtlsdr_dev_t *dev) {
 }
 
 RTLSDR_API int rtlsdr_set_testmode (rtlsdr_dev_t *dev, int on) {
-	return -1;
+	dev -> testMode = on;
 }
 
 
