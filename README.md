@@ -27,6 +27,14 @@ be named for some windows executables) is merely
 a translator from commands to the rtlsdr api to
 commands to the SDRplay api.
 
+----------------------------------------------------------------------------
+Version of october 2019
+----------------------------------------------------------------------------
+
+The version now resulted from a significant simplification, following
+the observation that not in all cases the "async" function was executed
+in a separate thread.
+
 -----------------------------------------------------------------------------
 Use under Windows (or how to run sdr# with the SDRplay)
 -----------------------------------------------------------------------------

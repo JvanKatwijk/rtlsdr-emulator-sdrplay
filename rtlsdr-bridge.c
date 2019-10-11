@@ -31,7 +31,7 @@
 #include	"gains.h"
 
 //	uncomment __DEBUG__ for lots of output
-//#define	__DEBUG__	1
+#define	__DEBUG__	1
 //	uncomment __SHORT__ for the simplest conversion N -> 8 bits
 //#define	__SHORT__	0
 
@@ -45,6 +45,10 @@
 static
 char    *sdrplay_errorCodes (mir_sdr_ErrT err);
 bool	installDevice ();
+static
+mir_sdr_ErrT	re_initialize (rtlsdr_dev_t *dev, int reason);
+static
+mir_sdr_ErrT	handle_gainSetting (rtlsdr_dev_t *dev);
 //	our version of the device descriptor
 struct rtlsdr_dev {
 	int	deviceIndex;
@@ -77,6 +81,7 @@ struct rtlsdr_dev {
 	int	buf_len;
 	int	fbP;
 	bool	running;
+	bool	finished;
 	bool	testMode;
 #ifdef	__MINGW32__
 	bool	open;
@@ -134,11 +139,11 @@ void	set_GRdB (int GRdB) {
 	                   devDescriptor. lnaState - 1, 1, 0);
 }
 
-void	set_agc	(bool onOff) {
+void	set_agc	(bool on) {
 mir_sdr_ErrT err;
 
-	devDescriptor. agcOn	= onOff;
-	err = mir_sdr_AgcControl (onOff ?
+	devDescriptor. agcOn	= on;
+	err = mir_sdr_AgcControl (on ?
 	                          mir_sdr_AGC_100HZ :
 	                          mir_sdr_AGC_DISABLE,
 	                          -devDescriptor. GRdB,
@@ -147,17 +152,6 @@ mir_sdr_ErrT err;
 	   fprintf (stderr,
 	            "Error %s on mir_sdr_AgcControl\n", sdrplay_errorCodes (err));
 	   return;
-	}
-
-	if (!onOff) {
-	   err	=  mir_sdr_RSP_SetGr (devDescriptor. GRdB,
-	                              devDescriptor. lnaState - 1, 1, 0);
-	   if (err != mir_sdr_Success) {
-	      fprintf (stderr,
-	            "Error %s on mir_sdr_RSP_SetGr\n",
-	                                sdrplay_errorCodes (err));
-	      return;
-	   }
 	}
 }
 
@@ -483,6 +477,7 @@ mir_sdr_ErrT err;
 
 //	default values
 	devDescriptor. running		= false;
+	devDescriptor. finished		= true;
 	devDescriptor. GRdB		= 45;
 	devDescriptor. lnaState		= 3;
 	devDescriptor. tunerGain	= 40;
@@ -505,9 +500,11 @@ RTLSDR_API int rtlsdr_close (rtlsdr_dev_t *dev) {
 #ifdef	__MINGW32__
 int	nResult	= -1;
 #endif
+	fprintf (stderr, "going to close the device\n");
 	if (dev == NULL)
 	   return -1;
-	
+	fprintf (stderr, "device is %s running\n",
+	                      dev -> running ? "" : "not");
 	if (dev -> running)
 	   rtlsdr_cancel_async (dev);
 	dev -> running	= false;
@@ -533,16 +530,28 @@ mir_sdr_ErrT    err;
 	if (dev == NULL)
 	   return -1;
 
-	if (!dev -> running) 	// record for later use
-	   dev -> frequency = freq;
+	if (!dev -> running) { 	// record for later use
+	   fprintf (stderr, "request for freq %d, while not running\n");
+	   dev -> frequency = freq; 
+	}
 	else
 	if (bankFor_sdr (dev -> frequency) == bankFor_sdr (freq)) {
+	   fprintf (stderr, "request for freq %d while running\n", freq);
 	   err = mir_sdr_SetRf (freq, 1, 0);
 	   if (err == mir_sdr_Success)
 	      dev -> frequency = freq;
 	   return err == mir_sdr_Success ? 0 : -1;
 	}
-	putSignalonQueue (&signalQueue, SET_FREQUENCY, freq);
+	else {
+	   dev -> frequency = freq;
+	   fprintf (stderr, "frequency request for %d\n", dev -> frequency);
+	   err = re_initialize (dev, mir_sdr_CHANGE_RF_FREQ);
+	   if (err != mir_sdr_Success) {
+	      fprintf (stderr, "Error at frequency setting %s\n",
+	                             sdrplay_errorCodes (err));
+	      return -1;
+	   }
+	}
 	return 0;
 }
 
@@ -641,9 +650,15 @@ RTLSDR_API int rtlsdr_set_tuner_bandwidth (rtlsdr_dev_t *dev, uint32_t bw) {
 	bw	=  getBandwidth (bw);
 	if (bw == dev -> bandWidth)
 	   return 0;
-	dev -> bandWidth = bw;	// handling will be later on
-	if (dev -> running)
-	   putSignalonQueue (&signalQueue, SET_BW, bw);
+	dev -> bandWidth = bw;	
+	if (dev -> running) {
+	   mir_sdr_ErrT err = re_initialize (dev, mir_sdr_CHANGE_BW_TYPE);
+	   if (err != mir_sdr_Success) {
+	      fprintf (stderr, "ReInit failed %s\n",
+	                                      sdrplay_errorCodes (err));
+	      return -1;
+	   }
+	}
 	return 0;
 }
 
@@ -671,8 +686,14 @@ RTLSDR_API int rtlsdr_set_sample_rate (rtlsdr_dev_t *dev,
 	                                                 dev -> inputRate);
 	   return -1;
 	}
-	if (dev -> running) 
-	   putSignalonQueue (&signalQueue, SET_RATE, rate);
+	if (dev -> running) {
+	   mir_sdr_ErrT err = re_initialize (dev, mir_sdr_CHANGE_FS_FREQ);
+	   if (err != mir_sdr_Success) {
+	      fprintf (stderr, "ReInit failed %s\n",
+	                                      sdrplay_errorCodes (err));
+	      return -1;
+	   }
+	}
 	return 0;
 }
 
@@ -687,7 +708,7 @@ mir_sdr_ErrT    err;
 	if (dev == NULL)
 	   return -1;
 
-	if (dev -> agcOn == on != 0)
+	if (dev -> agcOn == on)
 	   return 0;
 
 	if (!dev -> running) {		// save for later
@@ -704,17 +725,6 @@ mir_sdr_ErrT    err;
 	   fprintf (stderr,
 	            "Error %s on mir_sdr_AgcControl\n", sdrplay_errorCodes (err));
 	   return -1;
-	}
-	if (on == 0) {
-	   fprintf (stderr, "gain setting to %d %d\n", dev -> lnaState, 
-	                                               dev -> GRdB);
-	   err	=  mir_sdr_RSP_SetGr (dev -> GRdB,  dev -> lnaState, 1, 0);
-	   if (err != mir_sdr_Success) {
-	      fprintf (stderr,
-	            "Error %s on mir_sdr_RSP_SetGr\n",
-	                                sdrplay_errorCodes (err));
-	      return -1;
-	   }
 	}
 	dev -> agcOn	= on != 0;
 	return 0;
@@ -831,6 +841,9 @@ int	localGred	= dev -> GRdB;
 int	gRdBSystem;
 int	samplesPerPacket;
 
+	fprintf (stderr, "re_init with %d %d %d %d\n",
+	                  localGred, dev -> inputRate,
+	                  dev -> frequency, dev -> bandWidth);
 	err = mir_sdr_Reinit (&localGred,
 	                      ((double) (dev -> inputRate)) / MHz (1),
 	                      ((double) (dev -> frequency)) / MHz (1),
@@ -899,6 +912,7 @@ int     localGRed;
 	   dev -> GRdB = 20;
 	if (dev -> GRdB > 59)
 	   dev -> GRdB = 59;
+	dev	-> finished	= false;
 	dev	-> callback	= cb;
 	dev	-> ctx		= ctx;
 	dev	-> buf_num	= buf_num;
@@ -936,100 +950,28 @@ int     localGRed;
 #ifdef	__DEBUG__
 	fprintf (stderr, "rtlsdr_read_async is started\n");
 #endif
-//	err = handle_gainSetting (dev);
-//	if (err != mir_sdr_Success) 
-//	   return -1;
 
 	dev -> running	= true;
 	err		= mir_sdr_SetPpm    ((float)dev -> ppm);
 //
 //	we make this into a simple event loop with semaphores
 	while (dev -> running) {
-	   int	signal;
-	   int	value;
-	   mir_sdr_ErrT err;
-	      
-	   getSignalfromQueue (&signalQueue,  &signal, &value);
-
-#ifdef	__DEBUG__
-	   fprintf (stderr, "we got a signal %d\n", signal);
+#ifdef  __MINGW32__
+           Sleep (1);
+#else
+           usleep (1000);
 #endif
 
-	   switch (signal) {
-	      case CANCEL_ASYNC:
-//#ifdef	__DEBUG__
-	         fprintf (stderr, "cancel request\n");
-//#endif
-	         dev -> running = false;
-	         goto L_end;
-
-	      case SET_FREQUENCY:
-#ifdef	__DEBUG__
-	         fprintf (stderr, "frequency request for %d\n", value);
-#endif
-	         dev -> frequency = value;
-	         err = re_initialize (dev, mir_sdr_CHANGE_RF_FREQ);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "Error at frequency setting %s\n",
-	                                sdrplay_errorCodes (err));
-	            break;
-	         }
-
-	         err = handle_gainSetting (dev);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "Error at frequency setting %s\n",
-	                                sdrplay_errorCodes (err));
-	            break;
-	         }
-	         break;
-
-	      case SET_BW: 
-	         err = re_initialize (dev, mir_sdr_CHANGE_BW_TYPE);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "ReInit failed %s\n",
-	                                      sdrplay_errorCodes (err));
-	            break;
-	         }
-	         err = handle_gainSetting (dev);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "ReInit failed %s\n",
-	                                      sdrplay_errorCodes (err));
-	            break;
-	         }
-	         break;
-
-	      case SET_RATE:
-	         err = re_initialize (dev, mir_sdr_CHANGE_FS_FREQ);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "ReInit failed %s\n",
-	                                      sdrplay_errorCodes (err));
-	            break;
-	         }
-	         err = handle_gainSetting (dev);
-	         if (err != mir_sdr_Success) {
-	            fprintf (stderr, "ReInit failed %s\n",
-	                                      sdrplay_errorCodes (err));
-	            break;
-	         }
-	         break;
-
-	      default:
-	         break;
-	   }
 	}
-L_end:
-//	when here, we finish
-	signalReset (&signalQueue);
+	fprintf (stderr, "going to un-init\n");
 	err = mir_sdr_StreamUninit ();
-	if (err != mir_sdr_Success)
+	if (err != mir_sdr_Success) {
 	   fprintf (stderr, "Error at StreamUnInit %s\n",
 	                                sdrplay_errorCodes (err));
-#ifdef	__DEBUG
-	fprintf (stderr, "async is stopped\n");
-#else
-	;
-#endif
+	   return -1;
+	}
 	free (finalBuffer);
+	dev -> finished = true;
 	return 0;
 }
 
@@ -1044,12 +986,20 @@ RTLSDR_API int rtlsdr_cancel_async (rtlsdr_dev_t *dev) {
 	if (!dev -> running)
 	   return 0;
 
-	putSignalonQueue (&signalQueue, CANCEL_ASYNC, 0);
-	while (dev -> running)
-#ifdef	__MINGW32__
-	   Sleep (1);
+	dev -> running = false;
+	fprintf (stderr, "going to wait for finished\n");
+//	while (!dev -> finished) {
+//#ifdef  __MINGW32__
+//           Sleep (1);
+//#else
+//           usleep (1000);
+//#endif
+//	}
+	
+#ifdef	__DEBUG
+	fprintf (stderr, "async is stopped\n");
 #else
-	   usleep (1000);
+	;
 #endif
 	return 0;
 }
