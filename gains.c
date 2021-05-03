@@ -109,7 +109,7 @@ int	*getTable_RSP1a (int freq) {
 	   return RSP1A_Table [1];
 	if (freq < MHz (1000))
 	   return RSP1A_Table [2];
-	return RSP1_Table [3];
+	return RSP1A_Table [3];
 }
 #else
 void    gainMapper_RSP1a (int freq, int gainReduction,
